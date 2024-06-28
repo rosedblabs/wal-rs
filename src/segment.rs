@@ -7,7 +7,8 @@ use std::ops::{Deref, DerefMut};
 #[cfg(unix)]
 use std::os::unix::fs::{FileExt, OpenOptionsExt};
 #[cfg(windows)]
-use std::os::windows::fs::{FileExt};use std::path::Path;
+use std::os::windows::fs::{FileExt};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use anyhow::anyhow;
