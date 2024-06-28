@@ -4,8 +4,10 @@ use std::fs;
 use std::fs::File;
 use std::io::{ErrorKind, Seek, SeekFrom, Write};
 use std::ops::{Deref, DerefMut};
+#[cfg(unix)]
 use std::os::unix::fs::{FileExt, OpenOptionsExt};
-use std::path::Path;
+#[cfg(windows)]
+use std::os::windows::fs::{FileExt};use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use anyhow::anyhow;
@@ -22,6 +24,7 @@ use crate::options::KB;
 
 pub const CHUNK_HEADER_SIZE: u32 = 7;
 pub const BLOCK_SIZE: u32 = 32 * KB;
+#[cfg(unix)]
 const FILE_MODE_PERM: u32 = 0o644;
 
 const BLOCK_POOL_MAX_SIZE: usize = 20;
@@ -324,7 +327,10 @@ impl Segment {
         match self.cache.as_ref() {
             None => {
                 // cache disabled, read block directly from the segment file
+                #[cfg(unix)]
                 self.file.read_at(block, offset)?;
+                #[cfg(windows)]
+                self.file.seek_read(block, offset)?;
             }
             Some(cache_arc) => {
                 let mut cache = cache_arc.lock().unwrap();
@@ -332,7 +338,10 @@ impl Segment {
                     Some(val) => block.copy_from_slice(val),
                     None => {
                         // cache miss, read block from the segment file
+                        #[cfg(unix)]
                         self.file.read_at(block, offset)?;
+                        #[cfg(windows)]
+                        self.file.seek_read(block, offset)?;
                         if size == BLOCK_SIZE as u64 {
                             cache.put(key, block.to_owned());
                         }
@@ -484,8 +493,11 @@ pub fn open<'a>(dir_path: impl AsRef<Path>, ext_name: &str, id: u32, cache: Opti
         .write(true)
         .create(true)
         .append(true)
-        .mode(FILE_MODE_PERM)
         .open(&path)?;
+    #[cfg(unix)]
+    {
+        options.mode(FILE_MODE_PERM);
+    }
 
     let offset = file.seek(SeekFrom::End(0))?;
 
